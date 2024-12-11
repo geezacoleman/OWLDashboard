@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="owl-grid">
+    {% for owl_id, owl in owls.items() %}
+    <div class="owl-container" id="owl-{{ owl_id }}">
+        <div class="owl-header">
+            <h2>{{ owl_id }}</h2>
+            <div class="owl-status">
+                <span class="status-indicator {{ owl.status }}"></span>
+                {{ owl.status }}
+            </div>
+        </div>
+
+        <div class="stream-container">
+            <img class="stream" src="{{ url_for('owl_stream', owl_id=owl_id) }}" alt="{{ owl_id }} stream">
+
+            <div class="controls">
+                <button onclick="downloadFrame('{{ owl_id }}')" class="btn">Download Frame</button>
+                <button onclick="toggleRecording('{{ owl_id }}')" class="btn record-btn" id="{{ owl_id }}-record">
+                    Start Recording
+                </button>
+            </div>
+        </div>
+
+        <div class="stats-container">
+            <div class="stat-item">
+                <h3>CPU Usage</h3>
+                <div class="stat-value" id="{{ owl_id }}-cpu">0%</div>
+            </div>
+            <div class="stat-item">
+                <h3>Temperature</h3>
+                <div class="stat-value" id="{{ owl_id }}-temp">0°C</div>
+            </div>
+            <div class="stat-item">
+                <h3>Last Seen</h3>
+                <div class="stat-value" id="{{ owl_id }}-seen">Just now</div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="no-owls" {% if owls %}style="display: none"{% endif %}>
+    <h2>No OWLs Found</h2>
+    <p>Searching for OWLs on the network...</p>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/video.js') }}"></script>
+{% endblock %}

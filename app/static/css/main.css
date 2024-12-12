@@ -1,0 +1,171 @@
+:root {
+    --owl-blue: #022775;
+    --success-green: #4CAF50;
+    --warning-orange: #FF9800;
+    --error-red: #f44336;
+}
+
+/* Base Styles */
+body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    background: #f5f5f5;
+}
+
+.dashboard {
+    padding: 1rem;
+    max-width: 1800px;
+    margin: 0 auto;
+}
+
+/* Control Buttons */
+.control-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.control-btn {
+    padding: 1.5rem;
+    border: none;
+    border-radius: 0.5rem;
+    background: var(--owl-blue);
+    color: white;
+    font-size: 1.25rem;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: all 0.2s;
+}
+
+.control-btn:hover {
+    opacity: 0.9;
+}
+
+.control-btn.active {
+    background: var(--success-green);
+}
+
+.stop-btn {
+    background: var(--error-red);
+}
+
+/* Boom Visualization */
+.boom-container {
+    background: white;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.boom-container h2 {
+    margin: 0 0 1.5rem 0;
+    color: var(--owl-blue);
+}
+
+.boom-visualization {
+    position: relative;
+    padding: 2rem 0;
+}
+
+.boom-bar {
+    height: 0.25rem;
+    background: #ccc;
+    border-radius: 0.25rem;
+    margin: 2rem 0;
+}
+
+.owl-positions {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: space-between;
+}
+
+.owl-marker {
+    width: 3rem;
+    height: 3rem;
+    background: var(--owl-blue);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    transition: all 0.3s;
+}
+
+.owl-marker.detecting {
+    background: var(--success-green);
+    transform: scale(1.1);
+}
+
+.owl-marker.error {
+    animation: pulse 2s infinite;
+}
+
+/* OWL Grid */
+.owl-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1rem;
+}
+
+.owl-card {
+    background: white;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.owl-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+/* Video Feed */
+.video-feed {
+    background: white;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-top: 1rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.video-feed.hidden {
+    display: none;
+}
+
+.video-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.video-container {
+    background: #000;
+    height: 400px;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+/* Animations */
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}

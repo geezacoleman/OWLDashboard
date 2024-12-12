@@ -1,7 +1,7 @@
 import logging
 import requests
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Dict
 
 
 class SystemMonitor:
@@ -10,16 +10,21 @@ class SystemMonitor:
         self.logger = logging.getLogger("OWL.Monitor")
 
     def get_owl_stats(self, ip: str) -> dict:
-        """Get system stats from an OWL."""
+        """Get system stats from an OWL"""
         try:
-            response = requests.get(f"http://{ip}:5000/system_stats")
+            response = requests.get(f"http://{ip}:5000/system_stats", timeout=1)
             if response.ok:
                 stats = response.json()
                 self.stats_cache[ip] = {
                     'timestamp': datetime.now().isoformat(),
                     'stats': stats
                 }
-                return stats
+                return {
+                    'temp': stats['cpu_temp'],
+                    'cpu': stats['cpu_percent'],
+                    'detecting': stats.get('detecting', False),
+                    'error': stats.get('error')
+                }
         except requests.exceptions.RequestException as e:
             self.logger.error(f"Failed to get stats from {ip}: {e}")
 
@@ -28,16 +33,8 @@ class SystemMonitor:
             return self.stats_cache[ip]['stats']
 
         return {
-            'error': 'Could not retrieve stats',
-            'cpu_percent': 0,
-            'cpu_temp': 0,
-            'status': 'disconnected'
+            'temp': 0,
+            'cpu': 0,
+            'detecting': False,
+            'error': 'connection_lost'
         }
-
-    def monitor_health(self, ip: str) -> bool:
-        """Check if OWL is healthy."""
-        try:
-            response = requests.get(f"http://{ip}:5000/health")
-            return response.ok
-        except requests.exceptions.RequestException:
-            return False

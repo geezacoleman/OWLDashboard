@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>OWL Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Control Buttons -->
+        <div class="control-grid">
+            <button 
+                id="detectionButton"
+                class="control-btn"
+                onclick="toggleDetection()"
+            >
+                <span class="icon">⊕</span>
+                Detection Off
+            </button>
+            
+            <button 
+                id="recordButton"
+                class="control-btn"
+                onclick="toggleRecording()"
+            >
+                <span class="icon">⏺</span>
+                Record
+            </button>
+            
+            <button 
+                class="control-btn"
+                onclick="showSettings()"
+            >
+                <span class="icon">⚙</span>
+                Settings
+            </button>
+
+            <button 
+                class="control-btn stop-btn"
+                onclick="confirmStop()"
+            >
+                <span class="icon">⏻</span>
+                Stop
+            </button>
+        </div>
+
+        <!-- Boom Visualization -->
+        <div class="boom-container">
+            <h2>Spray Boom Status</h2>
+            <div class="boom-visualization">
+                <div class="boom-bar"></div>
+                <div class="owl-positions" id="owlPositions">
+                    <!-- OWLs will be added here dynamically -->
+                </div>
+                <div class="distance-markers" id="distanceMarkers">
+                    <!-- Distance markers will be added here dynamically -->
+                </div>
+            </div>
+        </div>
+
+        <!-- OWL Status Grid -->
+        <div class="owl-grid" id="owlGrid">
+            <!-- OWL status cards will be added here dynamically -->
+        </div>
+
+        <!-- Video Feed Area (Initially Hidden) -->
+        <div id="videoFeed" class="video-feed hidden">
+            <div class="video-header">
+                <h2 id="videoTitle">OWL Video Feed</h2>
+                <button onclick="closeVideo()" class="close-btn">×</button>
+            </div>
+            <div class="video-container">
+                <div class="video-stream">Live Feed</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

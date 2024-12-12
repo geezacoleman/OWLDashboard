@@ -4,10 +4,24 @@ import time
 import requests
 from datetime import datetime, timedelta
 from typing import Dict, Optional
+from requests.auth import HTTPBasicAuth
+from urllib3.exceptions import InsecureRequestWarning
+
+# Suppress only the single InsecureRequestWarning
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 
 class OWLFinder:
-    def __init__(self, subnet: str, scan_interval: int = 10, timeout: float = 2.0):
+    def __init__(self, subnet: str, credentials: dict, scan_interval: int = 10, timeout: float = 2.0):
+        """
+        Initialize OWL discovery service.
+
+        Args:
+            subnet: Network subnet to scan (e.g., "192.168.1")
+            credentials: Dict containing 'username' and 'password'
+            scan_interval: Time between network scans in seconds
+            timeout: Connection timeout in seconds
+        """
         self.subnet = subnet
         self.scan_interval = scan_interval
         self.timeout = timeout
@@ -16,10 +30,19 @@ class OWLFinder:
         self.discovery_thread = None
         self.running = False
 
-        # Track failed attempts
-        self.failed_ips = {}
-        self.max_retries = 3
-        self.retry_cooldown = 300  # 5 minutes cooldown for failed IPs
+        # Authentication setup
+        self.auth = HTTPBasicAuth(credentials['username'], credentials['password'])
+
+        # Initialize session for connection pooling
+        self.session = requests.Session()
+        self.session.verify = False  # Allow self-signed certificates
+        self.session.auth = self.auth
+
+        # Track failed attempts and last seen times
+        self.failed_attempts: Dict[str, int] = {}
+        self.last_seen: Dict[str, datetime] = {}
+        self.max_failed_attempts = 3
+        self.stale_threshold = timedelta(minutes=5)
 
     def start_discovery(self):
         """Start the discovery process"""
@@ -29,10 +52,12 @@ class OWLFinder:
         self.logger.info(f"Started OWL discovery on subnet {self.subnet}")
 
     def stop_discovery(self):
-        """Stop the discovery process"""
+        """Stop the discovery process and cleanup"""
         self.running = False
         if self.discovery_thread:
             self.discovery_thread.join()
+        if self.session:
+            self.session.close()
         self.logger.info("Stopped OWL discovery")
 
     def _discovery_loop(self):
@@ -43,90 +68,68 @@ class OWLFinder:
             time.sleep(self.scan_interval)
 
     def _cleanup_stale_owls(self):
-        """Remove OWLs that haven't been seen in 5 minutes"""
+        """Remove OWLs that haven't been seen recently"""
         current_time = datetime.now()
         stale_owls = []
 
-        for owl_id, owl_data in self.owls.items():
-            last_seen = datetime.fromisoformat(owl_data['last_seen'])
-            if (current_time - last_seen) > timedelta(minutes=5):
+        for owl_id, last_seen in self.last_seen.items():
+            if current_time - last_seen > self.stale_threshold:
                 stale_owls.append(owl_id)
-                self.logger.warning(f"OWL {owl_id} at {owl_data['ip']} hasn't responded in 5 minutes")
+                self.logger.info(f"OWL {owl_id} at {self.owls[owl_id]['ip']} is no longer responding")
 
         for owl_id in stale_owls:
-            del self.owls[owl_id]
-
-    def _should_retry_ip(self, ip: str) -> bool:
-        """Check if we should retry a previously failed IP"""
-        if ip not in self.failed_ips:
-            return True
-
-        fails, last_attempt = self.failed_ips[ip]
-        if fails >= self.max_retries:
-            # Check if cooldown period has passed
-            if (datetime.now() - last_attempt) > timedelta(seconds=self.retry_cooldown):
-                # Reset failed attempts after cooldown
-                del self.failed_ips[ip]
-                return True
-            return False
-        return True
+            self.owls.pop(owl_id, None)
+            self.last_seen.pop(owl_id, None)
+            self.failed_attempts.pop(owl_id, None)
 
     def scan_network(self):
-        """Scan subnet for OWLs using system_stats endpoint"""
+        """Scan subnet for OWLs"""
         for i in range(2, 255):
             if not self.running:
                 break
 
             ip = f"{self.subnet}.{i}"
 
-            if not self._should_retry_ip(ip):
+            # Skip IPs with too many failed attempts
+            if self.failed_attempts.get(ip, 0) >= self.max_failed_attempts:
                 continue
 
             try:
-                # Try standard HTTP first
-                response = requests.get(
-                    f"http://{ip}:5000/system_stats",
+                # Try to get system stats
+                response = self.session.get(
+                    f"https://{ip}/system_stats",
                     timeout=self.timeout
                 )
+                response.raise_for_status()
 
-                # If that fails, try HTTPS
-                if not response.ok:
-                    response = requests.get(
-                        f"https://{ip}:443/system_stats",
-                        timeout=self.timeout,
-                        verify=False  # Accept self-signed certs
-                    )
+                stats = response.json()
+                owl_id = str(i)  # Using last octet as ID
 
-                if response.ok:
-                    stats = response.json()
+                # Update OWL information
+                self.owls[owl_id] = {
+                    'ip': ip,
+                    'last_seen': datetime.now().isoformat(),
+                    'status': stats.get('status', 'connected'),
+                    'cpu_temp': stats.get('cpu_temp', 0),
+                    'cpu_percent': stats.get('cpu_percent', 0),
+                    'detecting': stats.get('detecting', False)
+                }
 
-                    # Generate a unique ID based on IP if not provided
-                    owl_id = str(i)  # Using last octet as ID
+                # Update tracking
+                self.last_seen[owl_id] = datetime.now()
+                self.failed_attempts.pop(ip, None)
 
-                    self.owls[owl_id] = {
-                        'ip': ip,
-                        'last_seen': datetime.now().isoformat(),
-                        'status': stats.get('status', 'unknown'),
-                        'cpu_temp': stats.get('cpu_temp', 0),
-                        'cpu_percent': stats.get('cpu_percent', 0),
-                        'detecting': stats.get('detecting', False),
-                        'error': stats.get('error')
-                    }
-
-                    if owl_id not in self.owls:
-                        self.logger.info(f"Found new OWL {owl_id} at {ip}")
-
-                    # Clear any failed attempts on success
-                    if ip in self.failed_ips:
-                        del self.failed_ips[ip]
+                if owl_id not in self.owls:
+                    self.logger.info(f"Found new OWL {owl_id} at {ip}")
 
             except requests.exceptions.RequestException as e:
                 # Track failed attempts
-                fails, _ = self.failed_ips.get(ip, (0, datetime.now()))
-                self.failed_ips[ip] = (fails + 1, datetime.now())
+                self.failed_attempts[ip] = self.failed_attempts.get(ip, 0) + 1
 
-                if fails == 0:  # Only log on first failure
+                if self.failed_attempts[ip] == 1:  # Log only first failure
                     self.logger.debug(f"Failed to connect to {ip}: {str(e)}")
+                elif self.failed_attempts[ip] == self.max_failed_attempts:
+                    self.logger.warning(f"Stopping attempts to {ip} after {self.max_failed_attempts} failures")
 
     def get_owls(self) -> dict:
         """Get all discovered OWLs"""
@@ -135,3 +138,10 @@ class OWLFinder:
     def get_owl(self, owl_id: str) -> Optional[dict]:
         """Get specific OWL details"""
         return self.owls.get(owl_id)
+
+    def reset_failed_attempts(self, ip: Optional[str] = None):
+        """Reset failed attempt counter for specific IP or all IPs"""
+        if ip:
+            self.failed_attempts.pop(ip, None)
+        else:
+            self.failed_attempts.clear()

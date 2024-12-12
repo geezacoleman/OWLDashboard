@@ -1,0 +1,72 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+env/
+.env
+.venv
+owl-env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+*.jsonl
+
+# Security and Credentials
+.owl/
+credentials.enc
+*.pem
+*.key
+*.crt
+.htpasswd*
+ssl/
+auth/
+
+# System specific
+.DS_Store
+Thumbs.db
+
+# OWL specific
+owl_credentials*
+.owl_credentials*
+nginx/*.conf
+config/*.ini
+!config/default.ini
+!config/example.ini
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+nosetests.xml
+coverage.xml
+*.cover
